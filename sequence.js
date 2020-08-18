@@ -32,6 +32,24 @@
 			};
 		};
 	};
+	var zip = function z(s, t, mapFn){
+		if(!s){
+			return null;
+		}
+		return function(){
+			var _s = s();
+			var otherRest = t;
+			var newValue = mapFn(_s.first, function(){
+				var _t = t();
+				otherRest = _t.rest;
+				return _t.first;
+			});
+			return {
+				first: newValue,
+				rest: z(_s.rest, otherRest, mapFn)
+			};
+		};
+	};
 	var take = function t(s, n){
 		if(n === 0 || !s){
 			return null;
@@ -45,34 +63,6 @@
 		};
 	};
 
-	var replace = function r(s, t, shouldReplace){
-		if(!s){
-			return null;
-		}
-		return function(){
-			var first, rest, _s = s();
-			if(shouldReplace(_s.first)){
-				var _t  = t();
-				return {
-					first: _t.first,
-					rest: r(_s.rest, _t.rest, shouldReplace)
-				};
-			}else{
-				return {
-					first: _s.first,
-					rest: r(_s.rest, t, shouldReplace)
-				};
-			}
-		};
-	};
-
-	var inception = function(s, shouldReplace){
-		return (function inc(s, level){
-			s = reduce(s, (_, x) => ({value: x.value, level: level}));
-			return replace(s, () => inc(s, level + 1)(), x => shouldReplace(x.value));
-		})(reduce(s, (_, x) => ({value:x, level: 0})), 0);
-	};
-
 	var toArray = function(s, startIndex, endIndex){
 		s = take(skip(s, startIndex), endIndex - startIndex);
 		var result = [];
@@ -84,6 +74,15 @@
 		}while(rest);
 		return result;
 	};
+
+	var integers = reduce(stream, x => x + 1, 0);
+	var zipped = zip(integers, integers, function(item, other){
+		if(item % 3 === 0){
+			return other();
+		}
+		return item;
+	});
+	console.log(toArray(zipped, 0, 10));
 
 	// var isJuf = function(getal){
 	// 	if(getal % 7 === 0){
@@ -113,9 +112,6 @@
 		reduce(acc, init){
 			return new Stream(reduce(this.fn, acc, init));
 		}
-		replace(shouldReplace, s){
-			return new Stream(replace(this.fn, s, shouldReplace));
-		}
 		skip(n){
 			return new Stream(skip(this.fn, n));
 		}
@@ -126,9 +122,6 @@
 			return toArray(this.fn, startIndex, endIndex);
 		}
 	}
-	
-	var integers = new Stream().reduce(x => x + 1, 0);
-	var integersOnLevels = integers.reduce((_, level) => integers.reduce((_, value) => ({value: value, level: level})));
 	
 })();
 
